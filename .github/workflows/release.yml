@@ -24,11 +24,6 @@ jobs:
       - name: Setup Rust (MSVC)
         run: rustup default stable-x86_64-pc-windows-msvc
 
-      - name: Setup WebView2 / Windows Build Tools
-        run: |
-          choco install -y windows-build-tools
-        shell: pwsh
-
       - name: Install frontend dependencies
         run: npm ci
 
@@ -49,50 +44,3 @@ jobs:
           files: |
             out/*
           generate_release_notes: true
-
-  release-linux:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install Linux dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev libssl-dev
-          # 若使用 Rust 扩展/图标
-          sudo apt-get install -y librsvg2-bin
-
-      - name: Install frontend dependencies
-        run: npm ci
-
-      - name: Build & bundle (Tauri)
-        run: npx tauri build
-
-      - name: Collect artifacts
-        run: |
-          mkdir -p out
-          cp src-tauri/target/release/bundle/deb/*.deb out/ 2>/dev/null || true
-          cp src-tauri/target/release/bundle/rpm/*.rpm out/ 2>/dev/null || true
-          cp src-tauri/target/release/bundle/appimage/*.AppImage out/ 2>/dev/null || true
-          ls -la out/
-
-      - name: Publish to existing Release
-        if: github.event_name == 'push'
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            out/*
-          fail_on_unmatched_files: false
