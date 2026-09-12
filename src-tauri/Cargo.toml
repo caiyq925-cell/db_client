@@ -1,0 +1,45 @@
+[package]
+name = "dbclient"
+version = "0.1.0"
+description = "A Tauri App"
+authors = ["you"]
+edition = "2021"
+
+[lib]
+name = "dbclient_lib"
+# staticlib+rlib for desktop; cdylib causes "export ordinal too large" on MinGW
+crate-type = ["staticlib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["devtools"] }
+tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+dirs = "5"
+thiserror = "2"
+tracing = "0.1"
+
+# MySQL via sqlx
+sqlx = { version = "0.8", features = ["runtime-tokio", "mysql", "chrono"] }
+
+# MongoDB official driver
+mongodb = "3"
+
+# Mongo legacy protocol (3.2): pure-Rust wire layer + SCRAM-SHA-1/MONGODB-CR
+bson = "2"
+hmac = "0.12"
+sha1 = "0.10"
+md-5 = "0.10"
+
+# Redis official driver
+redis = { version = "0.27", features = ["tokio-comp"] }
+futures = "0.3"
+
+chrono = { version = "0.4", features = ["serde"] }
+base64 = "0.22"
