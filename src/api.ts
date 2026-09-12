@@ -121,10 +121,10 @@ export const api = {
 
   // ===== Query commands =====
 
-  executeQuery: (conn: DatabaseConnection, query: string, limit?: number, database?: string) =>
+  executeQuery: (conn: DatabaseConnection, query: string, limit?: number, database?: string, collection?: string) =>
     connectInvoke<QueryResult>(
       'execute_query',
-      { query, limit: limit ?? null, database: database ?? null },
+      { query, limit: limit ?? null, database: database ?? null, collection: collection ?? null },
       conn,
     ),
 

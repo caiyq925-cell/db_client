@@ -105,13 +105,18 @@ impl MongoBackend {
         conn: &DatabaseConnection,
         query: &str,
         limit: Option<u32>,
+        collection: Option<&str>,
     ) -> Result<QueryResult, String> {
         match self {
             MongoBackend::Official(d) => {
-                d.execute_query(conn, query, limit).await.map_err(|e| e.to_string())
+                d.execute_query(conn, query, limit, collection)
+                    .await
+                    .map_err(|e| e.to_string())
             }
             MongoBackend::Legacy(d) => {
-                d.execute_query(conn, query, limit).await.map_err(|e| e.to_string())
+                d.execute_query(conn, query, limit, collection)
+                    .await
+                    .map_err(|e| e.to_string())
             }
         }
     }

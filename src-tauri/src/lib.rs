@@ -66,6 +66,7 @@ async fn execute_query(
     query: String,
     limit: Option<u32>,
     database: Option<String>,
+    collection: Option<String>,
 ) -> Result<crate::models::QueryResult, String> {
     // 查询页/侧栏选定的"当前数据库"优先于连接配置里的默认库；
     // 空串视为未选择，沿用连接自身配置。
@@ -80,7 +81,9 @@ async fn execute_query(
         }
         DbType::Mongo => {
             let mut backend = mongo_backend::MongoBackend::connect(&conn).await?;
-            backend.execute_query(&conn, &query, limit).await
+            backend
+                .execute_query(&conn, &query, limit, collection.as_deref())
+                .await
         }
         DbType::Redis => {
             redis::execute_command(&conn, &query).await.map_err(|e| e.to_string())

@@ -213,6 +213,8 @@ interface AppState {
   loadObjects: (conn: DatabaseConnection, db: string, force?: boolean) => Promise<void>;
   isExpanded: (key: string) => boolean;
   toggleExpanded: (key: string) => void;
+  /** Idempotent expand: always sets the key to true (double-click safe). */
+  expandNode: (key: string) => void;
   toggleTableExpanded: (key: string) => void;
   /** Toggle a table-detail section (fields/indexes/triggers). */
   toggleDetailSection: (key: string) => void;
@@ -850,6 +852,11 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   toggleExpanded: (key) =>
     set((s) => ({ expanded: { ...s.expanded, [key]: !s.expanded[key] } })),
+
+  // 幂等展开：双击 = 2 次同步 click，React 批处理下两次 toggle 会 net-zero，
+  // 因此行点击展开必须恒置 true 而不是翻转。
+  expandNode: (key) =>
+    set((s) => ({ expanded: { ...s.expanded, [key]: true } })),
 
   toggleTableExpanded: (key) =>
     set((s) => ({ tableExpanded: { ...s.tableExpanded, [key]: !s.tableExpanded[key] } })),

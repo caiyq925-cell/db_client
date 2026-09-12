@@ -26,7 +26,6 @@ const DB_PLACEHOLDERS: Record<string, string> = {
   mongo: '{ "name": { "$regex": "^A" } }',
   redis: 'KEYS *',
 };
-
 // Redis has no official CM mode; a permissive tokenizer is enough for display.
 const redisMode: StreamParser<unknown> = {
   token: (stream) => {
@@ -192,9 +191,13 @@ export function QueryTabView({ tab }: { tab: QueryTabData }) {
   const setActiveDb = useAppStore((s) => s.setActiveDb);
   const dbList = useAppStore((s) => s.dbList);
   const loadDatabases = useAppStore((s) => s.loadDatabases);
+  const objectsByDb = useAppStore((s) => s.objectsByDb);
+  const loadObjects = useAppStore((s) => s.loadObjects);
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const [limit, setLimit] = useState<string>('500');
+  // mongo 查询目标集合（find 在该集合上执行；与库下拉联动重置）
+  const [collection, setCollection] = useState<string>('');
   // 「SQL 就绪可执行」状态：编辑器有内容时执行按钮实填主色
   const [hasSql, setHasSql] = useState(() => !!(tab.queryText || DB_PLACEHOLDERS['mysql']));
   // 状态栏光标 行:列（selectionSet 时增量更新，开销可忽略）
@@ -206,14 +209,32 @@ export function QueryTabView({ tab }: { tab: QueryTabData }) {
   const currentDb = (conn && (activeDb[conn.id] || conn.database)) || '';
   const dbOptions = (conn && dbList[conn.id]) || null;
 
+  // mongo：当前库的集合列表（复用侧栏 loadObjects 缓存）
+  const collectionOptions =
+    conn?.kind === 'mongo' ? objectsByDb[`${conn.id}::${currentDb}`]?.tables.map((t) => t.name) ?? null : null;
+
   // 库列表未加载时静默拉取，供下拉选择（与侧栏共用 dbList 缓存）
   useEffect(() => {
     if (conn && conn.kind !== 'redis' && !dbList[conn.id]) void loadDatabases(conn);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conn?.id]);
 
+  // mongo 切库时：拉取该库集合列表并重置集合选择
+  useEffect(() => {
+    if (conn && conn.kind === 'mongo' && currentDb) {
+      void loadObjects(conn, currentDb);
+      setCollection('');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conn?.id, currentDb]);
+
   const run = async () => {
     if (!conn) return;
+    if (conn.kind === 'mongo' && !collection) {
+      updateQueryTab(tab.id, { running: false, error: null, result: null });
+      useAppStore.getState().showToast('请先在工具栏选择目标集合', 'error');
+      return;
+    }
     const queryText = viewRef.current?.state.doc.toString() ?? '';
     updateQueryTab(tab.id, { running: true, error: null, result: null, queryText });
 
@@ -224,6 +245,7 @@ export function QueryTabView({ tab }: { tab: QueryTabData }) {
         queryText,
         limit === '0' ? undefined : Number(limit),
         currentDb || undefined,
+        collection || undefined,
       );
       updateQueryTab(tab.id, { result, running: false });
       await api.addQueryHistory(conn.id, queryText, true, null, result.execution_time_ms);
@@ -301,6 +323,19 @@ export function QueryTabView({ tab }: { tab: QueryTabData }) {
             onChange={(v) => v && conn && setActiveDb(conn.id, v)}
             data={(dbOptions ?? []).map((db) => ({ value: db, label: db }))}
             title="SQL 将在该库下执行；与侧栏点击选中的库联动"
+            allowDeselect={false}
+          />
+        )}
+        {conn && conn.kind === 'mongo' && (
+          <Select
+            size="xs"
+            w={200}
+            aria-label="目标集合"
+            placeholder={collectionOptions ? '选择集合' : '加载集合…'}
+            value={collection || null}
+            onChange={(v) => v && setCollection(v)}
+            data={(collectionOptions ?? []).map((c) => ({ value: c, label: c }))}
+            title="查询 filter 将在该集合上执行 find"
             allowDeselect={false}
           />
         )}

@@ -313,6 +313,7 @@ function ConnectionTree({ conn }: { conn: DatabaseConnection }) {
   const objectsLoading = useAppStore((s) => s.objectsLoading);
   const expanded = useAppStore((s) => s.expanded);
   const toggleExpanded = useAppStore((s) => s.toggleExpanded);
+  const expandNode = useAppStore((s) => s.expandNode);
   const loadDatabases = useAppStore((s) => s.loadDatabases);
   const loadObjects = useAppStore((s) => s.loadObjects);
   const activeConnectionId = useAppStore((s) => s.activeConnectionId);
@@ -347,12 +348,12 @@ function ConnectionTree({ conn }: { conn: DatabaseConnection }) {
     if (!expanded[key] && !objectsByDb[key]) loadObjects(conn, db);
   };
 
-  // 幂等展开：行点击 = 选中 + 展开（双击 = 2 次 click 也保持展开，
-  // 修复"双击库名没反应"——旧实现 onClick+onDoubleClick 双 toggle 净零）。
+  // 幂等展开：行点击 = 选中 + 展开（双击 = 2 次同步 click 仍保持展开——
+  // React 批处理下两次 toggle 会 net-zero，必须用恒置 true 的 expandNode）。
   // 收起统一走行首箭头。
   const expandDb = (db: string) => {
     const key = `${conn.id}::${db}`;
-    if (!expanded[key]) toggleExpanded(key);
+    expandNode(key);
     if (!objectsByDb[key]) loadObjects(conn, db);
   };
 

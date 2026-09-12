@@ -624,18 +624,21 @@ impl MongoLegacyDriver {
     }
 
     /// JSON-value find used by the query workbench (read-only).
+    /// `collection`: 目标集合名；None 时回落到库名（兼容旧行为）。
     pub async fn execute_query(
         &mut self,
         conn: &DatabaseConnection,
         query_json: &str,
         limit: Option<u32>,
+        collection: Option<&str>,
     ) -> Result<QueryResult, LegacyError> {
         let json_val: serde_json::Value = serde_json::from_str(query_json)
             .map_err(|e| LegacyError::Query(format!("查询必须是 JSON 文档: {e}")))?;
         let filter = bson::to_document(&json_val)?;
         let start = std::time::Instant::now();
+        let coll_name = collection.unwrap_or(&conn.database);
         let docs = self
-            .find_sample(&conn.database, &conn.database, filter, limit.unwrap_or(200))
+            .find_sample(&conn.database, coll_name, filter, limit.unwrap_or(200))
             .await?;
 
         let mut columns: Vec<String> = Vec::new();

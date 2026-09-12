@@ -53,14 +53,22 @@ impl MongoDriver {
         Ok(())
     }
 
-    pub async fn execute_query(&self, conn: &DatabaseConnection, query: &str, limit: Option<u32>) -> Result<QueryResult, MongoError> {
+    /// `collection`: 目标集合名；None 时回落到库名（兼容旧行为）。
+    pub async fn execute_query(
+        &self,
+        conn: &DatabaseConnection,
+        query: &str,
+        limit: Option<u32>,
+        collection: Option<&str>,
+    ) -> Result<QueryResult, MongoError> {
         let client = self.client.as_ref().ok_or_else(|| MongoError::Query("Not connected".into()))?;
         let start = std::time::Instant::now();
 
         let json_val: serde_json::Value = serde_json::from_str(query).map_err(MongoError::Json)?;
         let filter: Document = bson::to_document(&json_val)?;
+        let coll_name = collection.unwrap_or(&conn.database);
         let db = client.database(&conn.database);
-        let coll = db.collection::<Document>(&conn.database);
+        let coll = db.collection::<Document>(coll_name);
 
         let mut find_action = coll.find(filter);
         if let Some(l) = limit {
