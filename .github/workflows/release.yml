@@ -43,10 +43,11 @@ jobs:
         run: |
           $ver = (Get-Content src-tauri/tauri.conf.json | ConvertFrom-Json).version
           $src = 'src-tauri/target/release'
-          $stage = "out/portable"
-          New-Item -ItemType Directory -Force $stage
+          $stage = 'out/portable'
+          New-Item -ItemType Directory -Force $stage | Out-Null
           Copy-Item "$src/dbclient.exe" $stage
-          Copy-Item "$src/WebView2Loader.dll" $stage
+          # WebView2Loader.dll may be absent when MSVC + embedBootstrapper is used
+          if (Test-Path "$src/WebView2Loader.dll") { Copy-Item "$src/WebView2Loader.dll" $stage }
           Compress-Archive -Path "$stage/*" -DestinationPath "out/dbclient_${ver}_portable_win-x64.zip"
           Get-ChildItem out
 
