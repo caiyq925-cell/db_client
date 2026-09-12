@@ -38,6 +38,18 @@ jobs:
           Copy-Item src-tauri/target/release/bundle/msi/*.msi out/ -ErrorAction SilentlyContinue
           Get-ChildItem out
 
+      - name: Build portable (green) zip
+        shell: pwsh
+        run: |
+          $ver = (Get-Content src-tauri/tauri.conf.json | ConvertFrom-Json).version
+          $src = 'src-tauri/target/release'
+          $stage = "out/portable"
+          New-Item -ItemType Directory -Force $stage
+          Copy-Item "$src/dbclient.exe" $stage
+          Copy-Item "$src/WebView2Loader.dll" $stage
+          Compress-Archive -Path "$stage/*" -DestinationPath "out/dbclient_${ver}_portable_win-x64.zip"
+          Get-ChildItem out
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:

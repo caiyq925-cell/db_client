@@ -51,29 +51,39 @@ npm run tauri build
 
 ### 绿色版部署（免安装）
 
-将 exe 和 DLL 复制到稳定目录（不要直接用 target 目录，`cargo clean` 会清空）：
+一键脚本 `build-portable.ps1`：把最新编译产物打成绿色版 zip，并在桌面创建快捷方式。
 
 ```powershell
-$rel = "d:\Users\ai_db\dbclient\release"
-New-Item -ItemType Directory -Force -Path $rel | Out-Null
-Copy-Item "src-tauri\target\release\dbclient.exe", "src-tauri\target\release\WebView2Loader.dll" $rel -Force
+powershell -ExecutionPolicy Bypass -File build-portable.ps1
 ```
 
-创建桌面快捷方式（PowerShell）：
+产物（`dist-portable/`）：
 
-```powershell
-$lnk = Join-Path ([Environment]::GetFolderPath('Desktop')) "dbclient.lnk"
-$ws = New-Object -ComObject WScript.Shell
-$sc = $ws.CreateShortcut($lnk)
-$sc.TargetPath = "d:\Users\ai_db\dbclient\release\dbclient.exe"
-$sc.WorkingDirectory = "d:\Users\ai_db\dbclient\release"
-$sc.Description = "dbclient 数据库客户端"
-$sc.Save()
+- `dbclient_<版本>-win-x64/` — 绿色版目录（`dbclient.exe` + `WebView2Loader.dll`，可直接运行）
+- `dbclient_<版本>_portable_win-x64.zip` — 压缩包，可分发给他人
+- 桌面 `dbclient.lnk` 快捷方式，指向绿色版 exe
+
+> 前提：先跑过 `npx tauri build`，`src-tauri/target/release/` 下有编译产物。
+> 重新构建后再次运行该脚本即可刷新绿色版与快捷方式。
+
+### GitHub Actions 自动发布
+
+推送 `v*` tag 后，`.github/workflows/release.yml` 自动在 Windows 上构建并创建 Release，附件包含：
+
+| 文件 | 说明 |
+|---|---|
+| `dbclient_<版本>_x64-setup.exe` | NSIS 安装包（推荐分发） |
+| `dbclient_<版本>_x64.msi` | MSI 安装包 |
+| `dbclient_<版本>_portable_win-x64.zip` | 绿色版压缩包 |
+
+手动触发：
+
+```bash
+git tag v0.1.3
+git push origin v0.1.3
 ```
 
-> 重新发布：改完代码重新执行 `npm run tauri build` 后，把新的 `dbclient.exe` 和 `WebView2Loader.dll` 再次覆盖到发布目录即可，桌面快捷方式无需重建。
->
-> Windows 平台说明：`build.rs` 会自动为所有产物（主程序与各类测试 exe）嵌入 Common-Controls v6 清单（MinGW 下通过 windres + `+whole-archive` 静态库实现），无需额外配置。
+> 说明：`tauri.conf.json` 中 `webviewInstallMode` 已设为 `embedBootstrapper`，安装包内嵌 WebView2 引导器，用户机器无需预装 WebView2。
 
 ## 架构
 
