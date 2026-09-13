@@ -38,6 +38,9 @@ npm run tauri dev
 
 ## 构建与发布
 
+> 完整本地打包步骤见 [docs/local-build.md](docs/local-build.md)。
+
+
 ```bash
 npm run tauri build
 ```

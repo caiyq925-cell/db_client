@@ -23,3 +23,6 @@ dist-portable
 *.njsproj
 *.sln
 *.sw?
+
+# local config (contains DB credentials, never commit)
+/redis

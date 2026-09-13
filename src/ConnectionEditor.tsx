@@ -181,6 +181,7 @@ export function ConnectionEditor() {
                 label="用户名"
                 value={auth.username}
                 onChange={(e) => patch({ auth: { ...auth, username: e.currentTarget.value } })}
+                placeholder={conn.kind === 'redis' ? '默认用户，留空即可' : ''}
               />
               <PasswordInput
                 label="密码"

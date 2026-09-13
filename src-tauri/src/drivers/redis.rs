@@ -31,21 +31,35 @@ impl RedisDriver {
             _ => conn.port,
         };
 
-        let url = match &conn.auth {
-            AuthMethod::Password { username, password } => {
-                if username.is_empty() {
-                    format!("redis://{}:{}", host, port)
-                } else if password.is_empty() {
-                    format!("redis://{}@{}:{}", username, host, port)
-                } else {
-                    format!("redis://{}:{}@{}:{}", username, password, host, port)
-                }
-            }
-            AuthMethod::None => format!("redis://{}:{}", host, port),
-            AuthMethod::ConnectionString { url } => url.clone(),
-        };
+        // 连接串里 `/<db>` 表示逻辑库编号；非数字（如命名空间名）忽略，退回 0。
+        let db: i64 = conn.database.trim().parse().unwrap_or(0);
 
-        let client = redis::Client::open(url)?;
+        let client = match &conn.auth {
+            AuthMethod::ConnectionString { url } => redis::Client::open(url.clone())?,
+            AuthMethod::Password { username, password } => redis::Client::open(redis::ConnectionInfo {
+                addr: redis::ConnectionAddr::Tcp(host, port),
+                redis: redis::RedisConnectionInfo {
+                    db,
+                    // Redis 默认用户没有用户名，此时只要发送密码（等价 AUTH <password>）。
+                    // 旧实现里用户名留空会连密码一起丢掉，导致必然认证失败。
+                    username: if username.is_empty() { None } else { Some(username.clone()) },
+                    password: if password.is_empty() { None } else { Some(password.clone()) },
+                    ..Default::default()
+                },
+            })?,
+            AuthMethod::None => redis::Client::open(redis::ConnectionInfo {
+                addr: redis::ConnectionAddr::Tcp(host, port),
+                redis: redis::RedisConnectionInfo {
+                    db,
+                    username: None,
+                    password: None,
+                    ..Default::default()
+                },
+            })?,
+        };
+        // 说明：这里刻意不走 `redis://user:pass@host` 连接串——用户名/密码中若含
+        // `@ : / #` 等字符会被 URL 解析规则拆错（例如密码 redis@xxx 会被当成主机名），
+        // 直接构造 ConnectionInfo 可完全规避转义问题。
         self.client = Some(client);
         Ok(())
     }
